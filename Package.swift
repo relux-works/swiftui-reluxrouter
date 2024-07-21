@@ -1,15 +1,15 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 
 import PackageDescription
 
 let package = Package(
 	name: "swiftui-reluxrouter",
 	platforms: [
-		.iOS(.v16),
+		.iOS(.v17),
 		.macOS(.v14),
 		.watchOS(.v10),
 		.tvOS(.v17),
-		.macCatalyst(.v17)
+		.macCatalyst(.v17),
 	],
 	products: [
 		.library(
@@ -18,7 +18,7 @@ let package = Package(
 		),
 	],
 	dependencies:      [
-		.package(url: "https://github.com/ivalx1s/darwin-relux.git", from: "4.2.0"),
+		.package(url: "https://github.com/ivalx1s/darwin-relux.git", from: "7.0.0"),
 	],
 	targets: [
 		.target(
