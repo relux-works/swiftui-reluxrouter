@@ -14,6 +14,7 @@ extension Relux.Navigation.Router {
 
             case let .set(pages):
                 self.pathProjection = pages.map { .known($0) }
+                self.path = .init(pages)
 
             case let .removeLast(count):
                 let itemsCountToRemove = min(count, self.pathProjection.count)
