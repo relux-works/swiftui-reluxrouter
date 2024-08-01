@@ -173,8 +173,6 @@ extension Relux.Navigation.ProjectingRouter {
 						}
 						self.pathProjection.append(.known(page))
 				}
-
-				self.path.append(page)
 				
 			case let .set(pages):
 				// Handle setting an entirely new navigation stack
@@ -186,9 +184,8 @@ extension Relux.Navigation.ProjectingRouter {
 			case let .removeLast(count):
 				// Handle removing pages from the end of the navigation stack
 				// Calculate the actual number of items to remove, ensuring we don't remove more than exist
-				let itemsCountToRemove = min(count, path.count)
-				// Remove the calculated number of items from both the path and the projection
-				self.path.removeLast(itemsCountToRemove)
+				let itemsCountToRemove = min(count, pathProjection.count)
+				// Remove the calculated number of items from the projection
 				self.pathProjection.removeLast(itemsCountToRemove)
 		}
 	}
