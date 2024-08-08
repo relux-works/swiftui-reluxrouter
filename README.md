@@ -132,5 +132,3 @@ Button(action: {
 ## License
 
 ReluxRouter is released under the [MIT License](https://github.com/ivalx1s/darwin-relux/blob/main/LICENSE).
-
-This updated documentation incorporates information from the Relux GitHub repository, providing a more comprehensive and accurate guide for using the navigation routers within the Relux architecture.
