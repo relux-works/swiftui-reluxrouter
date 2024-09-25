@@ -21,6 +21,6 @@ extension Relux.Navigation.ProjectingRouter {
 		///
 		/// - Parameter Int: The number of pages to remove from the end of the stack.
 		///   If this number is greater than the current stack size, it will remove all pages without causing an error.
-		case removeLast(Int)
+		case removeLast(Int = 1)
 	}
 }
