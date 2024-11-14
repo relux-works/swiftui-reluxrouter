@@ -27,14 +27,14 @@ extension Relux.Navigation {
 		///
 		/// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
 		/// It is automatically updated when the projected path changes and vice versa.
-		@Published public var path: NavigationPath = .init()
-		
+        @Published public var path: NavigationPath = .init()
+
 		/// A projection of the current path, including both known and external pages.
 		///
 		/// This property provides a more detailed view of the navigation stack, including pages that may have been
 		/// added through external means (e.g., system back button). It is automatically synchronized with `path`.
-		@Published public private(set) var pathProjection: [ProjectedPage] = []
-		
+        @Published public private(set) var pathProjection: [ProjectedPage] = []
+
 		/// Initializes a new instance of `ProjectingRouter`.
 		///
 		/// This initializer sets up the necessary pipelines to keep `path` and `pathProjection` synchronized.
@@ -72,7 +72,7 @@ extension Relux.Navigation.ProjectingRouter {
 	@MainActor
 	private func initPipelines() {
 		setupPathToProjectionPipeline()
-		setupProjectionToPathPipeline()
+		//setupProjectionToPathPipeline()
 	}
 	
 	/// Sets up a Combine pipeline to synchronize the `path` with the `pathProjection`.
@@ -85,6 +85,7 @@ extension Relux.Navigation.ProjectingRouter {
 	/// even when external navigation occurs (e.g., when a user taps the back button).
 	private func setupPathToProjectionPipeline() {
 		$path
+           // .debounce(for: 0.1, scheduler: DispatchQueue.main)
 			.receive(on: DispatchQueue.main)
 			.sink { [weak self] path in
 				guard let self else { return }
@@ -94,9 +95,11 @@ extension Relux.Navigation.ProjectingRouter {
 					case 0:
 						// No change in path length, no action needed
 						break
+
 					case ..<0:
 						// Path has shrunk, remove pages from the end of the projection
-						self.pathProjection.removeLast(abs(pagesDiff))
+                        self.pathProjection.removeLast(abs(pagesDiff))
+
 					default:
 						// Path has grown, add external pages to the projection
 						let newExternalPages = Array<ProjectedPage>(repeating: .external, count: pagesDiff)
@@ -128,7 +131,7 @@ extension Relux.Navigation.ProjectingRouter {
 						break
 					case ..<0:
 						// Projection has shrunk, remove pages from the end of the path
-						self.path.removeLast(abs(pagesDiff))
+                        self.path.removeLast(abs(pagesDiff))
 					default:
 						// Projection has grown, add known pages to the path
 						projectedPath
@@ -139,7 +142,7 @@ extension Relux.Navigation.ProjectingRouter {
 										// Ignore external pages
 										return
 									case let .known(p):
-										self.path.append(p)
+                                        self.path.append(p)
 								}
 							}
 				}
@@ -147,7 +150,6 @@ extension Relux.Navigation.ProjectingRouter {
 			.store(in: &pipelines)
 	}
 }
-
 
 @available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
 extension Relux.Navigation.ProjectingRouter {
@@ -160,11 +162,13 @@ extension Relux.Navigation.ProjectingRouter {
 	func internalReduce(with action: Relux.Navigation.ProjectingRouter<Page>.Action) {
 		switch action {
 			case let .push(page, allowingDuplicates):
+
 				// Handle pushing a new page onto the navigation stack
 				switch allowingDuplicates {
 					case true:
 						// If duplicates are allowed, simply append the new page to the projection
-						self.pathProjection.append(.known(page))
+                        self.pathProjection.append(.known(page))
+                        self.path.append(page)
 					case false:
 						// If duplicates are not allowed, check if the page already exists in the projection
 						// And act accordingly
@@ -172,21 +176,30 @@ extension Relux.Navigation.ProjectingRouter {
 							return
 						}
 						self.pathProjection.append(.known(page))
+                        self.path.append(page)
 				}
 				
 			case let .set(pages):
 				// Handle setting an entirely new navigation stack
 				// Convert the new pages to known projected pages
-				self.pathProjection = pages.map { .known($0) }
+
+                let newPathProjection: [ProjectedPage]  = pages.map { .known($0) }
+                guard self.pathProjection != newPathProjection else {
+                    return
+                }
+
 				// Set the actual navigation path to the new pages
-				self.path = .init(pages)
-				
+                self.path = .init(pages)
+                self.pathProjection = pages.map {.known($0) }
+
+
 			case let .removeLast(count):
 				// Handle removing pages from the end of the navigation stack
 				// Calculate the actual number of items to remove, ensuring we don't remove more than exist
 				let itemsCountToRemove = min(count, pathProjection.count)
 				// Remove the calculated number of items from the projection
-				self.pathProjection.removeLast(itemsCountToRemove)
+                self.path.removeLast(itemsCountToRemove)
+                self.pathProjection.removeLast(itemsCountToRemove)
 		}
 	}
 }
