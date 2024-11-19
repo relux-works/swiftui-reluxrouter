@@ -10,8 +10,8 @@ extension Relux.Navigation.ProjectingRouter {
 		///   - Page: The page to be pushed onto the stack.
 		///   - allowingDuplicates: A boolean flag indicating whether duplicate pages are allowed in the stack.
 		///     If `false`, the page won't be pushed if it already exists in the stack.
-        case push(page: Page, allowingDuplicates: Bool = true)
-		
+        case push(page: Page, allowingDuplicates: Bool = false)
+
 		/// Sets the entire navigation stack to a new array of pages.
 		///
 		/// - Parameter [Page]: The new array of pages that will replace the current navigation stack.
