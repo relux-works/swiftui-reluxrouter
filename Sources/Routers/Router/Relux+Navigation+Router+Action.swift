@@ -7,7 +7,7 @@ extension Relux.Navigation.Router {
 		/// Pushes a single page onto the navigation stack.
 		///
 		/// - Parameter page: The page to be pushed onto the stack.
-		case push(page: Page)
+        case push(page: Page, disableAnimation: Bool = false)
 		
 		/// Sets the entire navigation stack to a new array of pages.
 		///

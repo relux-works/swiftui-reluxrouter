@@ -14,7 +14,8 @@ extension Relux.Navigation {
 	///   - Page: A type that conforms to both `PathComponent` and `Sendable`, representing the pages in the navigation stack.
 	@Observable @MainActor
 	@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-	public final class Router<Page>: Relux.Navigation.RouterProtocol, Observable where Page: PathComponent, Page: Sendable {
+    public final class Router<Page>: Relux.Navigation.RouterProtocol, Relux.TemporalState, Observable where Page: PathComponent, Page: Sendable {
+
 		/// The current navigation path.
 		///
 		/// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
@@ -30,6 +31,10 @@ extension Relux.Navigation {
 		public func restore() async {
 			path = .init()
 		}
+        
+        public func cleanup() async {
+            path = .init()
+        }
 	}
 }
 
