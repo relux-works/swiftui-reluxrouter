@@ -38,9 +38,16 @@ extension Relux.Navigation {
 		/// Initializes a new instance of `ProjectingRouter`.
 		///
 		/// This initializer sets up the necessary pipelines to keep `path` and `pathProjection` synchronized.
-		public init() {
-			initPipelines()
-		}
+        public init() {
+            initPipelines()
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [ProjectingRouter] ProjectingRouter   inited with page type: \(pageTypeName)")
+        }
+        
+        deinit {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [ProjectingRouter] ProjectingRouter deinited with page type: \(pageTypeName)")
+        }
 		
 		/// Resets the router to its initial state.
 		///

@@ -53,6 +53,13 @@ extension Relux.Navigation {
         public init(maxPages: Int = 2) {
             precondition(maxPages > 0, "In Relux.Navigation.ModalRouter maxPages must be greater than 0")
             self.maxDepth = maxPages
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [ModalRouter] ModalRouter   inited with page type: \(pageTypeName)")
+        }
+        
+        deinit {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [ModalRouter] ModalRouter deinited with page type: \(pageTypeName)")
         }
         
         // MARK: - Relux.Navigation.RouterProtocol

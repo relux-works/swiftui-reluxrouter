@@ -22,7 +22,15 @@ extension Relux.Navigation {
 		public var path: NavigationPath = .init()
 		
 		/// Initializes a new instance of `Router`.
-		public init() { }
+        public init() {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [Router] Router   inited with page type: \(pageTypeName)")
+        }
+        
+        deinit {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [Router] Router deinited with page type: \(pageTypeName)")
+        }
 		
 		/// Resets the router to its initial state.
 		///
