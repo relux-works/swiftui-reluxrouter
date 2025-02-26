@@ -23,14 +23,32 @@ extension Relux.Navigation.Router {
                 self.path.append(page)
             }
             
+            // Auto-save to UserDefaults if a key is provided
+            if let key = userDefaultsKey {
+                // Save synchronously to avoid capturing self in an async context
+                let _ = saveNavigationPathToUserDefaults(forKey: key)
+            }
+            
         case let .set(pages):
             // Replaces the entire navigation path with a new set of pages
             self.path = .init(pages)
+            
+            // Auto-save to UserDefaults if a key is provided
+            if let key = userDefaultsKey {
+                // Save synchronously to avoid capturing self in an async context
+                let _ = saveNavigationPathToUserDefaults(forKey: key)
+            }
             
         case let .removeLast(count):
             // Removes a specified number of pages from the end of the navigation path
             let itemsCountToRemove = min(count, self.path.count)
             self.path.removeLast(itemsCountToRemove)
+            
+            // Auto-save to UserDefaults if a key is provided
+            if let key = userDefaultsKey {
+                // Save synchronously to avoid capturing self in an async context
+                let _ = saveNavigationPathToUserDefaults(forKey: key)
+            }
         }
     }
 }
