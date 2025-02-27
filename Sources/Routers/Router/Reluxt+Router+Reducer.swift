@@ -34,6 +34,25 @@ extension Relux.Navigation.Router {
             let itemsCountToRemove = min(count, self.path.count)
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Removing \(itemsCountToRemove) pages from navigation stack")
             path.removeLast(itemsCountToRemove)
+            
+        case .removeBeforeLast:
+            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Removing page before last from customPath if exists")
+            if customPath.count >= 2 {
+                // Remove the second-to-last page from customPath
+                customPath.remove(at: customPath.count - 2)
+                
+                // Serialize the updated customPath
+                let serialized = serializeCustomPath()
+                
+                // Reconstruct and assign the native path
+                if let newPath = reconstructNavigationPath(from: serialized) {
+                    path = newPath
+                } else {
+                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to reconstruct NavigationPath")
+                }
+            } else {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No page before last to remove")
+            }
         }
         
         _isInternalChange = false

@@ -135,7 +135,8 @@ extension Relux.Navigation {
                         pages.append(page)
                     }
                     
-                    customPath = pages
+                    // Reverse the pages to match the intended navigation stack order (root to top)
+                    customPath = pages.reversed()
                     debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Updated customPath with \(customPath.count) items")
                 } catch {
                     debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to decode custom path: \(error)")
@@ -150,7 +151,7 @@ extension Relux.Navigation {
         // MARK: - Serialization of Custom Path
         
         /// Serializes the custom path into the same format as the native NavigationPath's codable representation.
-        public func serializeCustomPath() -> [String] {
+        func serializeCustomPath() -> [String] {
             var serialized: [String] = []
             let typeName = String(reflecting: Page.self) // Fully qualified type name
             
@@ -169,8 +170,33 @@ extension Relux.Navigation {
                 return []
             }
             
-            debugPrint("[Relux] [Navigation] [Router] Serialized custom path")
             return serialized
+        }
+        
+        /// Reconstructs a NavigationPath from a serialized array of strings.
+        func reconstructNavigationPath(from serialized: [String]) -> NavigationPath? {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            
+            do {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Starting reconstruction of NavigationPath from serialized array: \(serialized)")
+                
+                // Encode the serialized array into Data
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Encoding serialized array into Data")
+                let data = try JSONEncoder().encode(serialized)
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Encoded data: \(String(data: data, encoding: .utf8) ?? "nil")")
+                
+                // Decode into NavigationPath.CodableRepresentation
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Decoding data into CodableRepresentation")
+                let codableRepresentation = try JSONDecoder().decode(NavigationPath.CodableRepresentation.self, from: data)
+                debugPrint("[Relux] [Navigation] [Router] \(pageTypeName) Decoded CodableRepresentation: \(codableRepresentation)")
+                
+                // Create a new NavigationPath
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully created new NavigationPath with \(NavigationPath(codableRepresentation).count) items")
+                return NavigationPath(codableRepresentation)
+            } catch {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to reconstruct NavigationPath: \(error)")
+                return nil
+            }
         }
         
         // MARK: - Applying Custom Path to Native Path
@@ -193,7 +219,6 @@ extension Relux.Navigation {
             path = .init()
         }
         
-        // Encoding and UserDefaults methods remain unchanged
         public static func encodePath(_ path: NavigationPath, prettyPrint: Bool = false, pageTypeName: String = "") -> Data? {
             let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
             guard let codableRepresentation = path.codable else {
