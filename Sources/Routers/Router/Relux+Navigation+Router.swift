@@ -14,8 +14,9 @@ extension Relux.Navigation {
 	///   - Page: A type that conforms to both `PathComponent` and `Sendable`, representing the pages in the navigation stack.
 	@Observable @MainActor
 	@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-    public final class Router<Page>: Relux.Navigation.RouterProtocol, Relux.TemporalState, Observable where Page: PathComponent, Page: Sendable {
-
+    public final class Router<Page>: Relux.Navigation.RouterProtocol, Relux.TemporalState, Observable
+    where Page: PathComponent, Page: Sendable, Page: Codable, Page: Hashable {
+        
         /// The current navigation path.
         public var path: NavigationPath {
             didSet {
@@ -35,13 +36,19 @@ extension Relux.Navigation {
                     }
                     onSystemNavigationChange?(changeAmount)
                 }
+                updateCustomPath() // Update customPath after any change
             }
         }
+        
+        /// The custom path holding the deserialized array of pages.
+        public var customPath: [Page] = []
         
         @ObservationIgnored /*private*/ var _isInternalChange: Bool = false
         @ObservationIgnored private(set) var previousPathCount: Int = 0
         @ObservationIgnored private var onSystemNavigationChange: ((Int) -> Void)?
         private(set) var userDefaultsKey: String?
+        
+        // MARK: - Initialization
         
         public init(
             userDefaultsKey: String? = nil,
@@ -69,12 +76,109 @@ extension Relux.Navigation {
                 debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No UserDefaults key provided, using empty path")
             }
             
+            updateCustomPath() // Set initial customPath
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Initialization complete with path count: \(self.path.count)")
         }
+        
         
         deinit {
             let pageTypeName = _typeName(Page.self, qualified: true)
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Router deinited with page type: \(pageTypeName)")
+        }
+        
+        private func updateCustomPath() {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            if let codable = path.codable {
+                do {
+                    // Encode the codable representation to Data
+                    let data = try JSONEncoder().encode(codable)
+                    // Decode it as an array of strings
+                    let elements = try JSONDecoder().decode([String].self, from: data)
+                    
+                    // Ensure the array has an even number of elements (type name + JSON string pairs)
+                    guard elements.count % 2 == 0 else {
+                        throw DecodingError.dataCorrupted(DecodingError.Context(
+                            codingPath: [],
+                            debugDescription: "Expected even number of elements in path array"
+                        ))
+                    }
+                    
+                    var pages: [Page] = []
+                    let expectedTypeName = String(reflecting: Page.self) // e.g., "Module.UI.Dashboard.Navigation.Page"
+                    
+                    // Process the array in pairs
+                    for i in stride(from: 0, to: elements.count, by: 2) {
+                        let typeName = elements[i]
+                        let jsonString = elements[i + 1]
+                        
+                        // Verify the type name matches the expected Page type
+                        guard typeName == expectedTypeName else {
+                            throw DecodingError.typeMismatch(
+                                Page.self,
+                                DecodingError.Context(
+                                    codingPath: [],
+                                    debugDescription: "Type mismatch: expected \(expectedTypeName), got \(typeName)"
+                                )
+                            )
+                        }
+                        
+                        // Convert the JSON string to Data
+                        guard let jsonData = jsonString.data(using: .utf8) else {
+                            throw DecodingError.dataCorrupted(DecodingError.Context(
+                                codingPath: [],
+                                debugDescription: "Invalid JSON string: \(jsonString)"
+                            ))
+                        }
+                        
+                        // Decode the Page object
+                        let page = try JSONDecoder().decode(Page.self, from: jsonData)
+                        pages.append(page)
+                    }
+                    
+                    customPath = pages
+                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Updated customPath with \(customPath.count) items")
+                } catch {
+                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to decode custom path: \(error)")
+                    customPath = []
+                }
+            } else {
+                customPath = []
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Path is not codable, set customPath to empty")
+            }
+        }
+        
+        // MARK: - Serialization of Custom Path
+        
+        /// Serializes the custom path into the same format as the native NavigationPath's codable representation.
+        public func serializeCustomPath() -> [String] {
+            var serialized: [String] = []
+            let typeName = String(reflecting: Page.self) // Fully qualified type name
+            
+            do {
+                for page in customPath {
+                    let jsonData = try JSONEncoder().encode(page)
+                    guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+                        debugPrint("[Relux] [Navigation] [Router] Failed to convert JSON data to string")
+                        return []
+                    }
+                    serialized.append(typeName)
+                    serialized.append(jsonString)
+                }
+            } catch {
+                debugPrint("[Relux] [Navigation] [Router] Failed to serialize customPath: \(error)")
+                return []
+            }
+            
+            debugPrint("[Relux] [Navigation] [Router] Serialized custom path")
+            return serialized
+        }
+        
+        // MARK: - Applying Custom Path to Native Path
+        
+        /// Applies the custom path to the native path.
+        public func applyCustomPath() {
+            path = NavigationPath.init(customPath)
+            debugPrint("[Relux] [Navigation] [Router] Applied customPath to native path")
         }
         
         public func setSystemNavigationHandler(_ callback: @escaping (Int) -> Void) {
