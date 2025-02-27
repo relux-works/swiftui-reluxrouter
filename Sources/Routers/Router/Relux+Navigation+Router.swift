@@ -16,10 +16,20 @@ extension Relux.Navigation {
 	@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
     public final class Router<Page>: Relux.Navigation.RouterProtocol, Relux.TemporalState, Observable where Page: PathComponent, Page: Sendable {
 
-		/// The current navigation path.
-		///
-		/// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
-		public var path: NavigationPath
+        /// The current navigation path.
+        ///
+        /// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
+        @ObservationIgnored private var _path: NavigationPath
+        public var path: NavigationPath {
+            get { _path }
+            set { handlePathChange(from: _path, to: newValue) }
+        }
+        
+        /// The previous path count, used to detect changes in the navigation stack
+        @ObservationIgnored /*private(set)*/ var previousPathCount: Int = 0
+        
+        /// Closure that gets called when path changes externally (e.g., via system back gesture)
+        @ObservationIgnored private var onSystemNavigationChange: ((Int) -> Void)?
         
         /// The UserDefaults key used for storing and retrieving the navigation path.
         private(set) var userDefaultsKey: String?
@@ -29,12 +39,16 @@ extension Relux.Navigation {
         /// - Parameter userDefaultsKey: An optional key for storing/retrieving the navigation path in UserDefaults.
         ///   If provided, the router will attempt to restore a previously saved path during initialization.
         ///   If the key is nil or no saved path is found, a new empty path will be created.
-        public init(userDefaultsKey: String?) {
+        public init(
+            userDefaultsKey: String? = nil,
+            onSystemNavigationChange: ((Int) -> Void)? = nil
+        ) {
             let pageTypeName = _typeName(Page.self, qualified: true)
             self.userDefaultsKey = userDefaultsKey
+            self.onSystemNavigationChange = onSystemNavigationChange
             
             // Start with default empty path
-            self.path = .init()
+            self._path = .init()
             
             // Log initialization start
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Initializing")
@@ -48,12 +62,13 @@ extension Relux.Navigation {
                 debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] UserDefaults key provided: \(key)")
                 
                 // Try to load data from UserDefaults
-                if let data = Self.loadDataFromUserDefaults(forKey: key) {
+                if let data = Self.loadDataFromUserDefaults(forKey: key, pageTypeName: pageTypeName) {
                     debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Found saved data for key: \(key)")
                     
                     // Try to decode the data into a NavigationPath
-                    if let savedPath = Self.decodePath(from: data) {
-                        self.path = savedPath
+                    if let savedPath = Self.decodePath(from: data, pageTypeName: pageTypeName) {
+                        self._path = savedPath
+                        self.previousPathCount = savedPath.count
                         debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully restored path with \(savedPath.count) items")
                     } else {
                         debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to decode saved data, using empty path")
@@ -64,7 +79,7 @@ extension Relux.Navigation {
             }
             
             // Log initialization completion
-            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Initialization complete with path count: \(self.path.count)")
+            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Initialization complete with path count: \(self._path.count)")
         }
         
         deinit {
@@ -72,6 +87,60 @@ extension Relux.Navigation {
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Router deinited with page type: \(pageTypeName)")
         }
 		
+        /// Sets a callback function to be called when navigation changes occur through system UI (back button, gesture)
+        ///
+        /// - Parameter callback: A closure that gets called when the system modifies the navigation path.
+        ///   The parameter indicates how many items were popped (positive) or pushed (negative).
+        public func setSystemNavigationHandler(_ callback: @escaping (Int) -> Void) {
+            self.onSystemNavigationChange = callback
+        }
+        
+        /// Handles changes to the navigation path
+        ///
+        /// This private method detects when the path changes and determines if the change
+        /// was initiated by the system or by our app's code.
+        ///
+        /// - Parameters:
+        ///   - oldPath: The previous navigation path
+        ///   - newPath: The new navigation path
+        private func handlePathChange(from oldPath: NavigationPath, to newPath: NavigationPath) {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            let oldCount = oldPath.count
+            let newCount = newPath.count
+            
+            // Store the new path
+            self._path = newPath
+            
+            // If this is an explicit change, don't trigger the system navigation handler
+            if Thread.callStackReturnAddresses.contains(where: {
+                let symbol = String(describing: $0)
+                return symbol.contains("internalReduce")
+            }) {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Path changed via internal action: \(oldCount) -> \(newCount)")
+                self.previousPathCount = newCount
+                return
+            }
+            
+            // If this is a path change not initiated by our internalReduce method,
+            // it's likely a system-initiated change (back button, gesture)
+            if oldCount != newCount {
+                let changeAmount = oldCount - newCount
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] External navigation change detected: \(changeAmount) items \(changeAmount > 0 ? "popped" : "pushed")")
+                
+                // Auto-save to UserDefaults if a key is provided
+                if let key = userDefaultsKey {
+                    let _ = saveNavigationPathToUserDefaults(forKey: key)
+                }
+                
+                // Call the handler if provided
+                if let handler = onSystemNavigationChange {
+                    handler(changeAmount)
+                }
+            }
+            
+            self.previousPathCount = newCount
+        }
+        
 		/// Resets the router to its initial state.
 		///
 		/// This method clears the `path`, effectively resetting the navigation stack.
