@@ -11,58 +11,31 @@ extension Relux.Navigation.Router {
     @MainActor
     func internalReduce(with action: Relux.Navigation.Router<Page>.Action) {
         let pageTypeName = _typeName(Page.self, qualified: true)
+        _isInternalChange = true
         
         switch action {
         case let .push(page, animationDisabled):
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Pushing page to navigation stack")
-            
             if animationDisabled {
                 var transaction = Transaction(animation: .none)
                 transaction.disablesAnimations = true
                 withTransaction(transaction) {
-                    self.path.append(page)
+                    path.append(page)
                 }
             } else {
-                // Appends a new page to the navigation path directly to avoid triggering the handler
-                self.path.append(page)
-            }
-            
-            // Update the previous count
-            self.previousPathCount = self.path.count
-            
-            // Auto-save to UserDefaults if a key is provided
-            if let key = userDefaultsKey {
-                let _ = saveNavigationPathToUserDefaults(forKey: key)
+                path.append(page)
             }
             
         case let .set(pages):
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Setting navigation stack to \(pages.count) pages")
-            
-            // Replaces the entire navigation path with a new set of pages
-            self.path = .init(pages)
-            
-            // Update the previous count
-            self.previousPathCount = self.path.count
-            
-            // Auto-save to UserDefaults if a key is provided
-            if let key = userDefaultsKey {
-                let _ = saveNavigationPathToUserDefaults(forKey: key)
-            }
+            path = .init(pages)
             
         case let .removeLast(count):
-            // Removes a specified number of pages from the end of the navigation path
             let itemsCountToRemove = min(count, self.path.count)
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Removing \(itemsCountToRemove) pages from navigation stack")
-            
-            self.path.removeLast(itemsCountToRemove)
-            
-            // Update the previous count
-            self.previousPathCount = self.path.count
-            
-            // Auto-save to UserDefaults if a key is provided
-            if let key = userDefaultsKey {
-                let _ = saveNavigationPathToUserDefaults(forKey: key)
-            }
+            path.removeLast(itemsCountToRemove)
         }
+        
+        _isInternalChange = false
     }
 }

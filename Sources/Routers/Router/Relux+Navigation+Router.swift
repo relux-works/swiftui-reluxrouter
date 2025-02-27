@@ -17,28 +17,32 @@ extension Relux.Navigation {
     public final class Router<Page>: Relux.Navigation.RouterProtocol, Relux.TemporalState, Observable where Page: PathComponent, Page: Sendable {
 
         /// The current navigation path.
-        ///
-        /// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
-        @ObservationIgnored private var _path: NavigationPath
         public var path: NavigationPath {
-            get { _path }
-            set { handlePathChange(from: _path, to: newValue) }
+            didSet {
+                let pageTypeName = _typeName(Page.self, qualified: true)
+                if _isInternalChange {
+                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Internal change: \(previousPathCount) -> \(path.count)")
+                    previousPathCount = path.count
+                    if let key = userDefaultsKey {
+                        saveNavigationPathToUserDefaults(forKey: key)
+                    }
+                } else if previousPathCount != path.count {
+                    let changeAmount = previousPathCount - path.count
+                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] External change: \(changeAmount) items \(changeAmount > 0 ? "popped" : "pushed")")
+                    previousPathCount = path.count
+                    if let key = userDefaultsKey {
+                        saveNavigationPathToUserDefaults(forKey: key)
+                    }
+                    onSystemNavigationChange?(changeAmount)
+                }
+            }
         }
         
-        /// The previous path count, used to detect changes in the navigation stack
-        @ObservationIgnored /*private(set)*/ var previousPathCount: Int = 0
-        
-        /// Closure that gets called when path changes externally (e.g., via system back gesture)
+        @ObservationIgnored /*private*/ var _isInternalChange: Bool = false
+        @ObservationIgnored private(set) var previousPathCount: Int = 0
         @ObservationIgnored private var onSystemNavigationChange: ((Int) -> Void)?
-        
-        /// The UserDefaults key used for storing and retrieving the navigation path.
         private(set) var userDefaultsKey: String?
         
-        /// Initializes a new instance of `Router`.
-        ///
-        /// - Parameter userDefaultsKey: An optional key for storing/retrieving the navigation path in UserDefaults.
-        ///   If provided, the router will attempt to restore a previously saved path during initialization.
-        ///   If the key is nil or no saved path is found, a new empty path will be created.
         public init(
             userDefaultsKey: String? = nil,
             onSystemNavigationChange: ((Int) -> Void)? = nil
@@ -46,113 +50,144 @@ extension Relux.Navigation {
             let pageTypeName = _typeName(Page.self, qualified: true)
             self.userDefaultsKey = userDefaultsKey
             self.onSystemNavigationChange = onSystemNavigationChange
+            self.path = .init()
+            self.previousPathCount = 0
             
-            // Start with default empty path
-            self._path = .init()
-            
-            // Log initialization start
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Initializing")
             
-            // Handle UserDefaults restoration if key is provided
-            switch userDefaultsKey {
-            case .none:
-                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No UserDefaults key provided, using empty path")
-                
-            case .some(let key):
+            if let key = userDefaultsKey {
                 debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] UserDefaults key provided: \(key)")
-                
-                // Try to load data from UserDefaults
-                if let data = Self.loadDataFromUserDefaults(forKey: key, pageTypeName: pageTypeName) {
-                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Found saved data for key: \(key)")
-                    
-                    // Try to decode the data into a NavigationPath
-                    if let savedPath = Self.decodePath(from: data, pageTypeName: pageTypeName) {
-                        self._path = savedPath
-                        self.previousPathCount = savedPath.count
-                        debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully restored path with \(savedPath.count) items")
-                    } else {
-                        debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to decode saved data, using empty path")
-                    }
+                if let data = Self.loadDataFromUserDefaults(forKey: key, pageTypeName: pageTypeName),
+                   let savedPath = Self.decodePath(from: data, pageTypeName: pageTypeName) {
+                    self.path = savedPath
+                    self.previousPathCount = savedPath.count
+                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully restored path with \(savedPath.count) items")
                 } else {
-                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No saved data found for key: \(key), using empty path")
+                    debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No saved data or failed to decode for key: \(key), using empty path")
                 }
+            } else {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No UserDefaults key provided, using empty path")
             }
             
-            // Log initialization completion
-            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Initialization complete with path count: \(self._path.count)")
+            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Initialization complete with path count: \(self.path.count)")
         }
         
         deinit {
             let pageTypeName = _typeName(Page.self, qualified: true)
             debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Router deinited with page type: \(pageTypeName)")
         }
-		
-        /// Sets a callback function to be called when navigation changes occur through system UI (back button, gesture)
-        ///
-        /// - Parameter callback: A closure that gets called when the system modifies the navigation path.
-        ///   The parameter indicates how many items were popped (positive) or pushed (negative).
+        
         public func setSystemNavigationHandler(_ callback: @escaping (Int) -> Void) {
             self.onSystemNavigationChange = callback
         }
         
-        /// Handles changes to the navigation path
-        ///
-        /// This private method detects when the path changes and determines if the change
-        /// was initiated by the system or by our app's code.
-        ///
-        /// - Parameters:
-        ///   - oldPath: The previous navigation path
-        ///   - newPath: The new navigation path
-        private func handlePathChange(from oldPath: NavigationPath, to newPath: NavigationPath) {
-            let pageTypeName = _typeName(Page.self, qualified: true)
-            let oldCount = oldPath.count
-            let newCount = newPath.count
-            
-            // Store the new path
-            self._path = newPath
-            
-            // If this is an explicit change, don't trigger the system navigation handler
-            if Thread.callStackReturnAddresses.contains(where: {
-                let symbol = String(describing: $0)
-                return symbol.contains("internalReduce")
-            }) {
-                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Path changed via internal action: \(oldCount) -> \(newCount)")
-                self.previousPathCount = newCount
-                return
-            }
-            
-            // If this is a path change not initiated by our internalReduce method,
-            // it's likely a system-initiated change (back button, gesture)
-            if oldCount != newCount {
-                let changeAmount = oldCount - newCount
-                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] External navigation change detected: \(changeAmount) items \(changeAmount > 0 ? "popped" : "pushed")")
-                
-                // Auto-save to UserDefaults if a key is provided
-                if let key = userDefaultsKey {
-                    let _ = saveNavigationPathToUserDefaults(forKey: key)
-                }
-                
-                // Call the handler if provided
-                if let handler = onSystemNavigationChange {
-                    handler(changeAmount)
-                }
-            }
-            
-            self.previousPathCount = newCount
+        public func restore() async {
+            path = .init()
         }
-        
-		/// Resets the router to its initial state.
-		///
-		/// This method clears the `path`, effectively resetting the navigation stack.
-		/// - Note: This is an asynchronous operation.
-		public func restore() async {
-			path = .init()
-		}
         
         public func cleanup() async {
             path = .init()
         }
-	}
+        
+        // Encoding and UserDefaults methods remain unchanged
+        public static func encodePath(_ path: NavigationPath, prettyPrint: Bool = false, pageTypeName: String = "") -> Data? {
+            let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
+            guard let codableRepresentation = path.codable else {
+                debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Failed to get codable representation: path contains non-Codable elements")
+                return nil
+            }
+            do {
+                let encoder = JSONEncoder()
+                if prettyPrint {
+                    encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
+                }
+                let data = try encoder.encode(codableRepresentation)
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    let shortJson = jsonString.count > 500 ? "\(jsonString.prefix(500))... (truncated, \(jsonString.count) chars total)" : jsonString
+                    debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Encoded navigation path with \(path.count) items: \(shortJson)")
+                }
+                return data
+            } catch {
+                debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Failed to encode navigation path: \(error)")
+                return nil
+            }
+        }
+        
+        public static func decodePath(from data: Data, pageTypeName: String = "") -> NavigationPath? {
+            let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
+            if let jsonString = String(data: data, encoding: .utf8) {
+                let shortJson = jsonString.count > 500 ? "\(jsonString.prefix(500))... (truncated, \(jsonString.count) chars total)" : jsonString
+                debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Decoding navigation path from: \(shortJson)")
+            }
+            do {
+                let decoder = JSONDecoder()
+                let codableRepresentation = try decoder.decode(NavigationPath.CodableRepresentation.self, from: data)
+                let decodedPath = NavigationPath(codableRepresentation)
+                debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Successfully decoded navigation path with \(decodedPath.count) items")
+                return decodedPath
+            } catch {
+                debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Failed to decode navigation path: \(error)")
+                return nil
+            }
+        }
+        
+        public static func loadDataFromUserDefaults(forKey key: String, pageTypeName: String = "") -> Data? {
+            let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
+            guard let data = UserDefaults.standard.data(forKey: key) else {
+                debugPrint("[Relux] [Navigation] [Router]\(typeInfo) No saved data found for key: \(key)")
+                return nil
+            }
+            debugPrint("[Relux] [Navigation] [Router]\(pageTypeName) Successfully loaded data from UserDefaults with key: \(key) (size: \(data.count) bytes)")
+            return data
+        }
+        
+        public static func saveDataToUserDefaults(_ data: Data, forKey key: String, pageTypeName: String = "") -> Bool {
+            let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
+            UserDefaults.standard.set(data, forKey: key)
+            debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Successfully saved data to UserDefaults with key: \(key) (size: \(data.count) bytes)")
+            return true
+        }
+        
+        public func encodeNavigationPath(prettyPrint: Bool = false) -> Data? {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            return Self.encodePath(path, prettyPrint: prettyPrint, pageTypeName: pageTypeName)
+        }
+        
+        public func decodeNavigationPath(from data: Data) -> Bool {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            guard let decodedPath = Self.decodePath(from: data, pageTypeName: pageTypeName) else {
+                return false
+            }
+            self.path = decodedPath
+            return true
+        }
+        
+        public func saveNavigationPathToUserDefaults(forKey key: String, prettyPrint: Bool = false) -> Bool {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Saving navigation path to UserDefaults with key: \(key)")
+            guard let data = Self.encodePath(path, prettyPrint: prettyPrint, pageTypeName: pageTypeName) else {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to encode navigation path for saving to UserDefaults")
+                return false
+            }
+            return Self.saveDataToUserDefaults(data, forKey: key, pageTypeName: pageTypeName)
+        }
+        
+        public func restoreNavigationPathFromUserDefaults(forKey key: String) -> Bool {
+            let pageTypeName = _typeName(Page.self, qualified: true)
+            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Attempting to restore navigation path from UserDefaults with key: \(key)")
+            guard let data = Self.loadDataFromUserDefaults(forKey: key, pageTypeName: pageTypeName) else {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No data found for key: \(key)")
+                return false
+            }
+            guard let decodedPath = Self.decodePath(from: data, pageTypeName: pageTypeName) else {
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to decode data from key: \(key)")
+                return false
+            }
+            self.path = decodedPath
+            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully restored navigation path with \(decodedPath.count) items")
+            return true
+        }
+    }
 }
 
 @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
@@ -170,194 +205,4 @@ extension Relux.Navigation.Router {
 				internalReduce(with: action)
 		}
 	}
-}
-
-@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-extension Relux.Navigation.Router {
-    /// Encodes a navigation path to a serializable format
-    ///
-    /// This pure function returns a Data object containing the encoded navigation path, which
-    /// can be used for state persistence or deep linking.
-    ///
-    /// - Parameters:
-    ///   - path: The NavigationPath to encode
-    ///   - prettyPrint: Whether to format the JSON with indentation for readability (default: false)
-    ///   - pageTypeName: The name of the page type for logging purposes
-    /// - Returns: A Data object containing the encoded path, or nil if any element in the path
-    ///   doesn't conform to Codable or if encoding fails
-    public static func encodePath(_ path: NavigationPath, prettyPrint: Bool = false, pageTypeName: String = "") -> Data? {
-        let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
-        
-        guard let codableRepresentation = path.codable else {
-            debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Failed to get codable representation: path contains non-Codable elements")
-            return nil
-        }
-        
-        do {
-            let encoder = JSONEncoder()
-            if prettyPrint {
-                encoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-            }
-            let data = try encoder.encode(codableRepresentation)
-            
-            // Print the encoded path as a JSON string for debugging
-            if let jsonString = String(data: data, encoding: .utf8) {
-                let shortJson = jsonString.count > 500
-                ? "\(jsonString.prefix(500))... (truncated, \(jsonString.count) chars total)"
-                : jsonString
-                debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Encoded navigation path with \(path.count) items: \(shortJson)")
-            }
-            
-            return data
-        } catch {
-            debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Failed to encode navigation path: \(error)")
-            return nil
-        }
-    }
-    
-    /// Decodes a navigation path from a serializable format
-    ///
-    /// This pure function attempts to decode a NavigationPath from the provided Data object.
-    ///
-    /// - Parameters:
-    ///   - data: A Data object containing an encoded navigation path
-    ///   - pageTypeName: The name of the page type for logging purposes
-    /// - Returns: A decoded NavigationPath if successful, nil otherwise
-    public static func decodePath(from data: Data, pageTypeName: String = "") -> NavigationPath? {
-        let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
-        
-        // Print the input data as a JSON string for debugging
-        if let jsonString = String(data: data, encoding: .utf8) {
-            let shortJson = jsonString.count > 500
-            ? "\(jsonString.prefix(500))... (truncated, \(jsonString.count) chars total)"
-            : jsonString
-            debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Decoding navigation path from: \(shortJson)")
-        }
-        
-        do {
-            let decoder = JSONDecoder()
-            let codableRepresentation = try decoder.decode(NavigationPath.CodableRepresentation.self, from: data)
-            let decodedPath = NavigationPath(codableRepresentation)
-            debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Successfully decoded navigation path with \(decodedPath.count) items")
-            return decodedPath
-        } catch {
-            debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Failed to decode navigation path: \(error)")
-            return nil
-        }
-    }
-    
-    /// Loads data from UserDefaults
-    ///
-    /// This pure function attempts to load data from UserDefaults using the provided key.
-    ///
-    /// - Parameters:
-    ///   - key: The key used when the data was stored in UserDefaults
-    ///   - pageTypeName: The name of the page type for logging purposes
-    /// - Returns: The Data object if found, nil otherwise
-    public static func loadDataFromUserDefaults(forKey key: String, pageTypeName: String = "") -> Data? {
-        let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
-        
-        guard let data = UserDefaults.standard.data(forKey: key) else {
-            debugPrint("[Relux] [Navigation] [Router]\(typeInfo) No saved data found for key: \(key)")
-            return nil
-        }
-        
-        debugPrint("[Relux] [Navigation] [Router]\(pageTypeName) Successfully loaded data from UserDefaults with key: \(key) (size: \(data.count) bytes)")
-        return data
-    }
-    
-    /// Saves data to UserDefaults
-    ///
-    /// This pure function saves the provided data to UserDefaults using the specified key.
-    ///
-    /// - Parameters:
-    ///   - data: The Data object to save
-    ///   - key: The key to use when storing the data in UserDefaults
-    ///   - pageTypeName: The name of the page type for logging purposes
-    /// - Returns: A boolean indicating whether the operation was successful
-    @discardableResult
-    public static func saveDataToUserDefaults(_ data: Data, forKey key: String, pageTypeName: String = "") -> Bool {
-        let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
-        
-        UserDefaults.standard.set(data, forKey: key)
-        debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Successfully saved data to UserDefaults with key: \(key) (size: \(data.count) bytes)")
-        return true
-    }
-    
-    /// Encodes the current navigation path to a serializable format
-    ///
-    /// This method uses the pure function `encodePath` to encode the current navigation path.
-    ///
-    /// - Parameter prettyPrint: Whether to format the JSON with indentation for readability (default: false)
-    /// - Returns: A Data object containing the encoded path, or nil if any element in the path
-    ///   doesn't conform to Codable or if encoding fails
-    public func encodeNavigationPath(prettyPrint: Bool = false) -> Data? {
-        let pageTypeName = _typeName(Page.self, qualified: true)
-        return Self.encodePath(path, prettyPrint: prettyPrint, pageTypeName: pageTypeName)
-    }
-    
-    /// Decodes and sets the navigation path from a serializable format
-    ///
-    /// This method uses the pure function `decodePath` to decode a navigation path,
-    /// then updates the router's path if decoding is successful.
-    ///
-    /// - Parameter data: A Data object containing an encoded navigation path
-    /// - Returns: A boolean indicating whether the decoding was successful
-    @discardableResult
-    public func decodeNavigationPath(from data: Data) -> Bool {
-        let pageTypeName = _typeName(Page.self, qualified: true)
-        guard let decodedPath = Self.decodePath(from: data, pageTypeName: pageTypeName) else {
-            return false
-        }
-        
-        self.path = decodedPath
-        return true
-    }
-    
-    /// Saves the current navigation path state to UserDefaults
-    ///
-    /// This method uses pure functions to encode the path and save it to UserDefaults.
-    ///
-    /// - Parameters:
-    ///   - key: The key to use when storing the navigation path in UserDefaults
-    ///   - prettyPrint: Whether to format the JSON with indentation for debugging (default: false)
-    /// - Returns: A boolean indicating whether the operation was successful
-    @discardableResult
-    public func saveNavigationPathToUserDefaults(forKey key: String, prettyPrint: Bool = false) -> Bool {
-        let pageTypeName = _typeName(Page.self, qualified: true)
-        debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Saving navigation path to UserDefaults with key: \(key)")
-        
-        guard let data = Self.encodePath(path, prettyPrint: prettyPrint, pageTypeName: pageTypeName) else {
-            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to encode navigation path for saving to UserDefaults")
-            return false
-        }
-        
-        return Self.saveDataToUserDefaults(data, forKey: key, pageTypeName: pageTypeName)
-    }
-    
-    /// Restores the navigation path state from UserDefaults
-    ///
-    /// This method uses pure functions to load data from UserDefaults and decode it into a navigation path.
-    ///
-    /// - Parameter key: The key used when the navigation path was stored in UserDefaults
-    /// - Returns: A boolean indicating whether the operation was successful
-    @discardableResult
-    public func restoreNavigationPathFromUserDefaults(forKey key: String) -> Bool {
-        let pageTypeName = _typeName(Page.self, qualified: true)
-        debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Attempting to restore navigation path from UserDefaults with key: \(key)")
-        
-        guard let data = Self.loadDataFromUserDefaults(forKey: key, pageTypeName: pageTypeName) else {
-            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] No data found for key: \(key)")
-            return false
-        }
-        
-        guard let decodedPath = Self.decodePath(from: data, pageTypeName: pageTypeName) else {
-            debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to decode data from key: \(key)")
-            return false
-        }
-        
-        self.path = decodedPath
-        debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully restored navigation path with \(decodedPath.count) items")
-        return true
-    }
 }
