@@ -1,7 +1,7 @@
 import Relux
 
 @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-extension Relux.Navigation.CodableRouter {
+extension Relux.Navigation.CodableProjectedRouter {
     /// Represents actions that can be performed on the navigation stack.
     public enum Action: Relux.Action {
         /// Pushes a single page onto the navigation stack.

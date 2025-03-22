@@ -2,14 +2,14 @@ import Relux
 import SwiftUI
 
 @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-extension Relux.Navigation.CodableRouter {
+extension Relux.Navigation.CodableProjectedRouter {
     /// Handles internal navigation actions to modify the router's navigation state.
     ///
     /// This method is responsible for updating the `path` property based on the received action.
     ///
     /// - Parameter action: The navigation action to be processed.
     @MainActor
-    func internalReduce(with action: Relux.Navigation.CodableRouter<Page>.Action) {
+    func internalReduce(with action: Relux.Navigation.CodableProjectedRouter<Page>.Action) {
         let pageTypeName = _typeName(Page.self, qualified: true)
         _isInternalChange = true
 

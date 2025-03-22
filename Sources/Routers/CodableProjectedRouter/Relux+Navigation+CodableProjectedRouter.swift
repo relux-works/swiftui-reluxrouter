@@ -17,7 +17,7 @@ extension Relux.Navigation {
     ///   - Page: A type that conforms to both `PathComponent` and `Sendable`, representing the pages in the navigation stack.
     @Observable @MainActor
     @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-    public final class CodableRouter<Page>: Relux.Navigation.RouterProtocol, Relux.State, Observable
+    public final class CodableProjectedRouter<Page>: Relux.Navigation.RouterProtocol, Relux.State, Observable
     where Page: CodablePathComponent {
 
         /// The current navigation path.
@@ -328,7 +328,7 @@ extension Relux.Navigation {
 }
 
 @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-extension Relux.Navigation.CodableRouter {
+extension Relux.Navigation.CodableProjectedRouter {
     /// Handles incoming Relux actions to modify the navigation state.
     ///
     /// This method processes navigation actions and updates the router's state accordingly.
@@ -336,7 +336,7 @@ extension Relux.Navigation.CodableRouter {
     ///
     /// - Parameter action: The Relux action to be processed.
     public func reduce(with action: any Relux.Action) async {
-        switch action as? Relux.Navigation.CodableRouter<Page>.Action {
+        switch action as? Relux.Navigation.CodableProjectedRouter<Page>.Action {
         case .none: break
         case let .some(action):
             internalReduce(with: action)
