@@ -28,7 +28,7 @@ extension Relux.Navigation {
         ///
         /// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
         /// It is automatically updated when the projected path changes and vice versa.
-        @Published public var path: NavigationPath = .init()
+        @Published public var path: NavigationPath
 
         /// A projection of the current path, including both known and external pages.
         ///
@@ -39,7 +39,10 @@ extension Relux.Navigation {
         /// Initializes a new instance of `ProjectingRouter`.
         ///
         /// This initializer sets up the necessary pipelines to keep `path` and `pathProjection` synchronized.
-        public init() {
+        public init(pages: [Page] = []) {
+            self.path = .init()
+            internalReduce(with: .set(pages))
+
             initPipelines()
             let pageTypeName = _typeName(Page.self, qualified: true)
             debugPrint("[Relux] [Navigation] [ProjectingRouter] ProjectingRouter   inited with page type: \(pageTypeName)")
