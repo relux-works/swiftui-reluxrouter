@@ -5,6 +5,6 @@ extension Relux {
 }
 
 extension Relux.Navigation {
-    public protocol RouterProtocol: Relux.State {}
+    public protocol RouterProtocol: Relux.HybridState {}
     public protocol PathComponent: Equatable, Hashable, Sendable {}
 }

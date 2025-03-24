@@ -8,7 +8,6 @@ extension Relux.Navigation.CodableProjectedRouter {
     /// This method is responsible for updating the `path` property based on the received action.
     ///
     /// - Parameter action: The navigation action to be processed.
-    @MainActor
     func internalReduce(with action: Relux.Navigation.CodableProjectedRouter<Page>.Action) {
         let pageTypeName = _typeName(Page.self, qualified: true)
         _isInternalChange = true

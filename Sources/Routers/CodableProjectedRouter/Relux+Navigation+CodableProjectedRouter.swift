@@ -17,7 +17,7 @@ extension Relux.Navigation {
     ///   - Page: A type that conforms to both `PathComponent` and `Sendable`, representing the pages in the navigation stack.
     @Observable @MainActor
     @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-    public final class CodableProjectedRouter<Page>: Relux.Navigation.RouterProtocol, Relux.State, Observable
+    public final class CodableProjectedRouter<Page>: Relux.Navigation.RouterProtocol, Observable
     where Page: CodablePathComponent {
 
         /// The current navigation path.
