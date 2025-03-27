@@ -74,9 +74,13 @@ extension Relux.Navigation {
 
             /// Restores (resets) the router to its initial state.
             /// Clears all modal pages and any remembered page.
-        public func cleanup() async {
+        public func restore() async {
             modalPage = []
             previouslyReplacedPage = nil
+        }
+
+        public func cleanup() async {
+            await restore()
         }
 
             /// Processes incoming Relux actions if they match this router's action type.

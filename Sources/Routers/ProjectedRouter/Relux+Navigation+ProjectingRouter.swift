@@ -56,9 +56,12 @@ extension Relux.Navigation {
         /// Resets the router to its initial state.
         ///
         /// This method clears both the `path` and `pathProjection`, effectively resetting the navigation stack.
-        public func cleanup() async {
+        public func restore() async {
             path = .init()
             pathProjection = []
+        }
+
+        public func cleanup() async {
         }
 
         /// Handles incoming Relux actions to modify the navigation state.

@@ -224,7 +224,6 @@ extension Relux.Navigation {
         }
 
         public func cleanup() async {
-            path = .init()
         }
 
         public static func encodePath(_ path: NavigationPath, prettyPrint: Bool = false, pageTypeName: String = "") -> Data? {
