@@ -219,11 +219,8 @@ extension Relux.Navigation {
             self.onSystemNavigationChange = callback
         }
 
-        public func restore() async {
-            path = .init()
-        }
-
         public func cleanup() async {
+            path = .init()
         }
 
         public static func encodePath(_ path: NavigationPath, prettyPrint: Bool = false, pageTypeName: String = "") -> Data? {

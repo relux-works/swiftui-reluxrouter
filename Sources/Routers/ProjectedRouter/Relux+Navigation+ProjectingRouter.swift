@@ -41,7 +41,9 @@ extension Relux.Navigation {
         /// This initializer sets up the necessary pipelines to keep `path` and `pathProjection` synchronized.
         public init(pages: [Page] = []) {
             self.path = .init()
-            internalReduce(with: .set(pages))
+            if pages.isEmpty {
+                internalReduce(with: .set(pages))
+            }
 
             initPipelines()
             let pageTypeName = _typeName(Page.self, qualified: true)
@@ -56,12 +58,9 @@ extension Relux.Navigation {
         /// Resets the router to its initial state.
         ///
         /// This method clears both the `path` and `pathProjection`, effectively resetting the navigation stack.
-        public func restore() async {
-            path = .init()
-            pathProjection = []
-        }
-
         public func cleanup() async {
+            pathProjection = []
+            path = .init()
         }
 
         /// Handles incoming Relux actions to modify the navigation state.
@@ -133,44 +132,49 @@ extension Relux.Navigation.ProjectingRouter {
     @MainActor
     func internalReduce(with action: Relux.Navigation.ProjectingRouter<Page>.Action) {
         switch action {
-        case let .push(page, allowingDuplicates):
+            case let .push(page, allowingDuplicates):
 
-            // Handle pushing a new page onto the navigation stack
-            switch allowingDuplicates {
-            case true:
-                // If duplicates are allowed, simply append the new page to the projection
-                self.pathProjection.append(.known(page))
-                self.path.append(page)
-            case false:
-                // If duplicates are not allowed, check if the page already exists in the projection
-                // And act accordingly
-                if self.pathProjection.contains(.known(page)) {
+                // Handle pushing a new page onto the navigation stack
+                switch allowingDuplicates {
+                    case true:
+                        // If duplicates are allowed, simply append the new page to the projection
+                        self.pathProjection.append(.known(page))
+                        self.path.append(page)
+                        debugPrint(">>> router route path push \(page)")
+
+                    case false:
+                        // If duplicates are not allowed, check if the page already exists in the projection
+                        // And act accordingly
+                        if self.pathProjection.contains(.known(page)) {
+                            return
+                        }
+                        self.pathProjection.append(.known(page))
+                        self.path.append(page)
+                        debugPrint(">>> router route path push \(page)")
+                    }
+
+            case let .set(pages):
+                // Handle setting an entirely new navigation stack
+                // Convert the new pages to known projected pages
+
+                let newPathProjection: [ProjectedPage] = pages.map { .known($0) }
+                guard self.pathProjection != newPathProjection else {
                     return
                 }
-                self.pathProjection.append(.known(page))
-                self.path.append(page)
-            }
 
-        case let .set(pages):
-            // Handle setting an entirely new navigation stack
-            // Convert the new pages to known projected pages
+                // Set the actual navigation path to the new pages
+                self.pathProjection = pages.map { .known($0) }
+                self.path = .init(pages)
+                debugPrint(">>> router route path set \(pages)")
 
-            let newPathProjection: [ProjectedPage] = pages.map { .known($0) }
-            guard self.pathProjection != newPathProjection else {
-                return
-            }
-
-            // Set the actual navigation path to the new pages
-            self.path = .init(pages)
-            self.pathProjection = pages.map { .known($0) }
-
-        case let .removeLast(count):
-            // Handle removing pages from the end of the navigation stack
-            // Calculate the actual number of items to remove, ensuring we don't remove more than exist
-            let itemsCountToRemove = min(count, pathProjection.count)
-            // Remove the calculated number of items from the projection
-            self.path.removeLast(itemsCountToRemove)
-            self.pathProjection.removeLast(itemsCountToRemove)
+            case let .removeLast(count):
+                // Handle removing pages from the end of the navigation stack
+                // Calculate the actual number of items to remove, ensuring we don't remove more than exist
+                let itemsCountToRemove = min(count, pathProjection.count)
+                // Remove the calculated number of items from the projection
+                self.pathProjection.removeLast(itemsCountToRemove)
+                self.path.removeLast(itemsCountToRemove)
+                debugPrint(">>> router route path remove \(count)")
         }
     }
 }

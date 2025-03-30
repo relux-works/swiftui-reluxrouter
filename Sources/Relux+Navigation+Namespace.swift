@@ -5,8 +5,6 @@ extension Relux {
 }
 
 extension Relux.Navigation {
-    public protocol RouterProtocol: Relux.HybridState {
-        func restore() async
-    }
+    public protocol RouterProtocol: Relux.HybridState { }
     public protocol PathComponent: Equatable, Hashable, Sendable {}
 }
