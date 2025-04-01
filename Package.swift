@@ -16,14 +16,16 @@ let package = Package(
 			targets: ["ReluxRouter"]
 		),
 	],
-	dependencies:      [
+	dependencies: [
 		.package(url: "https://github.com/ivalx1s/darwin-relux.git", from: "8.0.2"),
+        .package(url: "https://github.com/lm/navigation-stack-backport.git", from: "1.1.0"),
 	],
 	targets: [
 		.target(
 			name: "ReluxRouter",
 			dependencies:  [
 				.product(name: "Relux", package: "darwin-relux"),
+                .product(name: "NavigationStackBackport", package: "navigation-stack-backport"),
 			],
 			path: "Sources"
 		),
