@@ -12,7 +12,7 @@ extension View {
     public func sheetStack<Page>(
         router: Relux.Navigation.ModalRouter<Page>,
         @ViewBuilder content: @escaping (Page) -> some View
-    ) -> some View where Page: Relux.Navigation.ModalComponent {
+    ) -> some View where Page: Relux.Navigation.ModalCodableComponent {
         modifier(
             ModalStackModifier(
                 router: router,
@@ -24,7 +24,7 @@ extension View {
 }
 
 @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
-private struct ModalStackModifier<Page: Relux.Navigation.ModalComponent, InternalContent: View>: ViewModifier {
+private struct ModalStackModifier<Page: Relux.Navigation.ModalCodableComponent, InternalContent: View>: ViewModifier {
     let router: Relux.Navigation.ModalRouter<Page>
     let depth: Int
     let content: (Page) -> InternalContent

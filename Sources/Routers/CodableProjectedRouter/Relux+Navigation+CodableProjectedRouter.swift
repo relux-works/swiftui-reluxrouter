@@ -3,10 +3,6 @@ import Relux
 import SwiftUI
 
 extension Relux.Navigation {
-    public protocol CodablePathComponent: PathComponent, Codable {}
-}
-
-extension Relux.Navigation {
     /// A lightweight, observable router class for managing navigation state in SwiftUI applications.
     ///
     /// `Router` is designed to work with SwiftUI's navigation APIs and integrates with the Relux architecture.
@@ -18,7 +14,7 @@ extension Relux.Navigation {
     @Observable @MainActor
     @available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
     public final class CodableProjectedRouter<Page>: Relux.Navigation.RouterProtocol, Observable
-    where Page: CodablePathComponent {
+    where Page: PathCodableComponent {
 
         /// The current navigation path.
         public var path: NavigationPath {
