@@ -89,7 +89,6 @@ extension Relux.Navigation {
             let pageTypeName = _typeName(Page.self, qualified: true)
             debugPrint("[Relux] [Navigation] [ModalRouter] ModalRouter deinited with page type: \(pageTypeName)")
         }
-        
         // MARK: - Relux.Navigation.RouterProtocol
         
         /// Restores (resets) the router to its initial state.
