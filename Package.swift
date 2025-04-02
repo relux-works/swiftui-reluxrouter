@@ -18,7 +18,7 @@ let package = Package(
 	],
 	dependencies: [
 		.package(url: "https://github.com/ivalx1s/darwin-relux.git", from: "8.1.0"),
-        .package(url: "https://github.com/lm/navigation-stack-backport.git", from: "1.1.0"),
+        .package(url: "https://github.com/ivalx1s/navigation-stack-backport.git", from: "2.0.0"),
 	],
 	targets: [
 		.target(
