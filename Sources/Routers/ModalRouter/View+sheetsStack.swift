@@ -1,7 +1,7 @@
 import Relux
 import SwiftUI
 
-@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
+@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
 extension View {
     /// Presents a stack of modal sheets managed by a ModalRouter.
     /// - Parameters:
@@ -23,7 +23,7 @@ extension View {
     }
 }
 
-@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
+@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
 private struct ModalStackModifier<Page: Relux.Navigation.ModalCodableComponent, InternalContent: View>: ViewModifier {
     let router: Relux.Navigation.ModalRouter<Page>
     let depth: Int

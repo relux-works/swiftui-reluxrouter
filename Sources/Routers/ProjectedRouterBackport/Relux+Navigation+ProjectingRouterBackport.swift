@@ -1,7 +1,7 @@
 import Combine
 import Relux
 import SwiftUI
-import NavigationStackBackport
+import NavigationBackport
 
 extension Relux.Navigation.ProjectingRouterBackport {
     public enum ProjectedPage: Equatable {
@@ -12,7 +12,7 @@ extension Relux.Navigation.ProjectingRouterBackport {
 
 extension Relux.Navigation {
     
-    /// A router class that manages navigation state and synchronizes between a `NavigationStackBackport.NavigationPath` and a projected path.
+    /// A router class that manages navigation state and synchronizes between a `NBNavigationPath` and a projected path.
     ///
     /// `ProjectingRouter` is designed to handle complex navigation scenarios, including programmatic navigation updates for other modules.
     ///
@@ -29,7 +29,7 @@ extension Relux.Navigation {
         ///
         /// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
         /// It is automatically updated when the projected path changes and vice versa.
-        @Published public var path: NavigationStackBackport.NavigationPath
+        @Published public var path: NBNavigationPath
         
         /// A projection of the current path, including both known and external pages.
         ///

@@ -1,11 +1,11 @@
 import Relux
 import SwiftUI
 
-@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
+@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
 extension Relux.Navigation {
     /// A router dedicated to managing modal pages with a configurable maximum stack size.
-    @Observable @MainActor
-    public final class ModalRouter<Page>: Relux.Navigation.RouterProtocol, Observable
+    @MainActor
+    public final class ModalRouter<Page>: Relux.Navigation.RouterProtocol, ObservableObject
     where Page: ModalCodableComponent {
         
         // MARK: - Configuration
@@ -109,7 +109,7 @@ extension Relux.Navigation {
 
 // MARK: - Actions
 
-@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
+@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
 extension Relux.Navigation.ModalRouter {
     
     /// Actions that can manipulate the modal stack.
@@ -131,7 +131,7 @@ extension Relux.Navigation.ModalRouter {
 }
 // MARK: - Internal Reduction
 
-@available(iOS 17, macOS 14, watchOS 10, tvOS 17, macCatalyst 17, *)
+@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
 extension Relux.Navigation.ModalRouter {
     
     // MARK: - Internal Reduction

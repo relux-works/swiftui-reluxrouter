@@ -1,7 +1,7 @@
 import Combine
 import Relux
 import SwiftUI
-import NavigationStackBackport
+import NavigationBackport
 
 
 extension Relux.Navigation {
@@ -19,7 +19,7 @@ extension Relux.Navigation {
     where Page: PathComponent, Page: Sendable, Page: Codable, Page: Hashable {
         
         /// The current navigation path.
-        public var path: NavigationStackBackport.NavigationPath {
+        public var path: NBNavigationPath {
             didSet {
                 let pageTypeName = _typeName(Page.self, qualified: true)
                 if _isInternalChange {
@@ -175,7 +175,7 @@ extension Relux.Navigation {
         }
         
         /// Reconstructs a NavigationPath from a serialized array of strings.
-        func reconstructNavigationPath(from serialized: [String]) -> NavigationStackBackport.NavigationPath? {
+        func reconstructNavigationPath(from serialized: [String]) -> NBNavigationPath? {
             let pageTypeName = _typeName(Page.self, qualified: true)
             
             do {
@@ -188,12 +188,12 @@ extension Relux.Navigation {
                 
                 // Decode into NavigationPath.CodableRepresentation
                 debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Decoding data into CodableRepresentation")
-                let codableRepresentation = try JSONDecoder().decode(NavigationStackBackport.NavigationPath.CodableRepresentation.self, from: data)
+                let codableRepresentation = try JSONDecoder().decode(NBNavigationPath.CodableRepresentation.self, from: data)
                 debugPrint("[Relux] [Navigation] [Router] \(pageTypeName) Decoded CodableRepresentation: \(codableRepresentation)")
                 
                 // Create a new NavigationPath
-                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully created new NavigationPath with \(NavigationStackBackport.NavigationPath(codableRepresentation).count) items")
-                return NavigationStackBackport.NavigationPath(codableRepresentation)
+                debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Successfully created new NavigationPath with \(NBNavigationPath(codableRepresentation).count) items")
+                return NBNavigationPath(codableRepresentation)
             } catch {
                 debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Failed to reconstruct NavigationPath: \(error)")
                 return nil
@@ -204,7 +204,7 @@ extension Relux.Navigation {
         
         /// Applies the custom path to the native path.
         public func applyCustomPath() {
-            path = NavigationStackBackport.NavigationPath.init(customPath)
+            path = NBNavigationPath.init(customPath)
             debugPrint("[Relux] [Navigation] [Router] Applied customPath to native path")
         }
         
@@ -220,7 +220,7 @@ extension Relux.Navigation {
             path = .init()
         }
         
-        public static func encodePath(_ path: NavigationStackBackport.NavigationPath, prettyPrint: Bool = false, pageTypeName: String = "") -> Data? {
+        public static func encodePath(_ path: NBNavigationPath, prettyPrint: Bool = false, pageTypeName: String = "") -> Data? {
             let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
             guard let codableRepresentation = path.codable else {
                 debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Failed to get codable representation: path contains non-Codable elements")
@@ -243,7 +243,7 @@ extension Relux.Navigation {
             }
         }
         
-        public static func decodePath(from data: Data, pageTypeName: String = "") -> NavigationStackBackport.NavigationPath? {
+        public static func decodePath(from data: Data, pageTypeName: String = "") -> NBNavigationPath? {
             let typeInfo = pageTypeName.isEmpty ? "" : " [\(pageTypeName)]"
             if let jsonString = String(data: data, encoding: .utf8) {
                 let shortJson = jsonString.count > 500 ? "\(jsonString.prefix(500))... (truncated, \(jsonString.count) chars total)" : jsonString
@@ -251,8 +251,8 @@ extension Relux.Navigation {
             }
             do {
                 let decoder = JSONDecoder()
-                let codableRepresentation = try decoder.decode(NavigationStackBackport.NavigationPath.CodableRepresentation.self, from: data)
-                let decodedPath = NavigationStackBackport.NavigationPath(codableRepresentation)
+                let codableRepresentation = try decoder.decode(NBNavigationPath.CodableRepresentation.self, from: data)
+                let decodedPath = NBNavigationPath(codableRepresentation)
                 debugPrint("[Relux] [Navigation] [Router]\(typeInfo) Successfully decoded navigation path with \(decodedPath.count) items")
                 return decodedPath
             } catch {
