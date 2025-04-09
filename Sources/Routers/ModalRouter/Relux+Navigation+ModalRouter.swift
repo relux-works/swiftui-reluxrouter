@@ -20,7 +20,7 @@ extension Relux.Navigation {
         
         /// The current modal pages, limited by maxPages.
         /// The current modal pages, limited by `maxDepth`.
-        public var modalPage: [Page] = [] {
+        @Published public var modalPage: [Page] = [] {
             didSet {
                 // Whenever our modal page stack changes, we save to UserDefaults (if a key is set).
                 if let key = userDefaultsKey {
