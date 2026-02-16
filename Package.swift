@@ -17,7 +17,7 @@ let package = Package(
 		),
 	],
 	dependencies: [
-		.package(url: "https://github.com/relux-works/swift-relux.git", from: "8.4.0"),
+		.package(url: "https://github.com/relux-works/swift-relux.git", from: "9.0.0"),
 	],
 	targets: [
 		.target(
