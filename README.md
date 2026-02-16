@@ -1,6 +1,6 @@
 # Relux SwiftUI Router
 
-This documentation covers two navigation router implementations: `ProjectingRouter` and `Router`. Both are part of the `Relux.Navigation` namespace and conform to the `RouterProtocol` for use with [Relux](https://github.com/ivalx1s/darwin-relux), a unidirectional data flow architectural library designed to work seamlessly with Swift 6's concurrency model and tailored for use within SwiftUI applications.
+This documentation covers two navigation router implementations: `ProjectingRouter` and `Router`. Both are part of the `Relux.Navigation` namespace and conform to the `RouterProtocol` for use with [Relux](https://github.com/relux-works/swift-relux), a unidirectional data flow architectural library designed to work seamlessly with Swift 6's concurrency model and tailored for use within SwiftUI applications.
 
 ## ProjectingRouter
 
@@ -131,4 +131,4 @@ Button(action: {
 
 ## License
 
-ReluxRouter is released under the [MIT License](https://github.com/ivalx1s/darwin-relux/blob/main/LICENSE).
+ReluxRouter is released under the [MIT License](https://github.com/relux-works/swift-relux/blob/main/LICENSE).
