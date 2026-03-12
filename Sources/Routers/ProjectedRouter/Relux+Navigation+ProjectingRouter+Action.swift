@@ -17,6 +17,13 @@ extension Relux.Navigation.ProjectingRouter {
         /// - Parameter [Page]: The new array of pages that will replace the current navigation stack.
         case set(_ pages: [Page])
 
+        /// Pops the navigation stack back to the last occurrence of the specified page, if it exists.
+        ///
+        /// If the page is not found in the current stack, this action performs no changes.
+        ///
+        /// - Parameter Page: The page to pop back to.
+        case popToIfPresent(_ page: Page)
+
         /// Removes a specified number of pages from the end of the navigation stack.
         ///
         /// - Parameter Int: The number of pages to remove from the end of the stack.

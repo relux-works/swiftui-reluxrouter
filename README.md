@@ -17,11 +17,14 @@ public final class ProjectingRouter<Page>: Relux.Navigation.RouterProtocol, Obse
 
 ```swift
 public enum Action: Relux.Action {
-    case push(page: Page, allowingDuplicates: Bool = false)
-    case set(pages: [Page])
-    case removeLast(count: Int = 1)
+    case push(_ page: Page, allowingDuplicates: Bool = false)
+    case set(_ pages: [Page])
+    case popToIfPresent(_ page: Page)
+    case removeLast(Int = 1)
 }
 ```
+
+`popToIfPresent` pops the stack back to the last occurrence of the specified page. If the page is not present in the current stack, it performs no changes.
 
 ## Router
 

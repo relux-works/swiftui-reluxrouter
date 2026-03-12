@@ -167,6 +167,16 @@ extension Relux.Navigation.ProjectingRouter {
                 self.path = .init(pages)
                 debugPrint(">>> router route path set \(pages)")
 
+            case let .popToIfPresent(page):
+                guard let pageIndex = self.pathProjection.lastIndex(of: .known(page)) else { return }
+
+                let itemsCountToRemove = self.pathProjection.count - pageIndex - 1
+                guard itemsCountToRemove > 0 else { return }
+
+                self.pathProjection.removeLast(itemsCountToRemove)
+                self.path.removeLast(itemsCountToRemove)
+                debugPrint(">>> router route path popToIfPresent \(page)")
+
             case let .removeLast(count):
                 // Handle removing pages from the end of the navigation stack
                 // Calculate the actual number of items to remove, ensuring we don't remove more than exist
