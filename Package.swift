@@ -17,7 +17,9 @@ let package = Package(
 		),
 	],
 	dependencies: [
-		.package(url: "https://github.com/relux-works/swift-relux.git", from: "9.0.0"),
+		// TODO: Switch back to remote after local Relux package changes settle.
+		// .package(url: "https://github.com/relux-works/swift-relux.git", from: "9.0.0"),
+		.package(path: "../swift-relux"),
 	],
 	targets: [
 		.target(
