@@ -74,6 +74,39 @@ struct ProjectingRouterTests {
         #expect(router.projectedPathStrings[2].contains("external-same-type"))
     }
 
+    @Test("global projecting router action appends concrete module pages")
+    func globalProjectingRouterActionAppendsConcreteModulePages() async {
+        let router = Relux.Navigation.ProjectingRouter<TestPage>()
+        let external = SecondaryExternalPage(section: "module-b", itemID: 17)
+
+        await router.reduce(
+            with: Relux.Navigation.ProjectingRouterAction.push(.init(external))
+        )
+
+        #expect(router.path.count == 1)
+        #expect(router.pathProjection == [.external])
+        #expect(router.containsProjection(of: external))
+        #expect(router.projectedPathStrings[0].contains("SecondaryExternalPage"))
+        #expect(router.projectedPathStrings[0].contains("module-b"))
+        #expect(router.projectedPathStrings[0].contains("17"))
+    }
+
+    @Test("global projecting router action prevents duplicate concrete module pages")
+    func globalProjectingRouterActionPreventsDuplicateConcreteModulePages() async {
+        let router = Relux.Navigation.ProjectingRouter<TestPage>()
+        let external = SecondaryExternalPage(section: "module-c", itemID: 19)
+
+        await router.reduce(
+            with: Relux.Navigation.ProjectingRouterAction.push(.init(external))
+        )
+        await router.reduce(
+            with: Relux.Navigation.ProjectingRouterAction.push(.init(external))
+        )
+
+        #expect(router.path.count == 1)
+        #expect(router.projectedPathStrings.count == 1)
+    }
+
     @Test("projection updates when native back navigation removes pages")
     func projectionUpdatesWhenPathShrinks() async {
         let router = Relux.Navigation.ProjectingRouter<TestPage>()
@@ -137,6 +170,17 @@ struct ProjectingRouterTests {
         #expect(router.projectedPathStrings.count == 1)
         #expect(router.projectedPathStrings[0].contains("CustomProjectedExternalPage"))
         #expect(router.projectedPathStrings[0].contains("module-a/details/15"))
+    }
+
+    @Test("generic Relux NavigationLink can be specialized per module page type")
+    func genericNavigationLinkCanBeSpecializedPerModulePageType() {
+        typealias TestNavigationLink<Label: View> = Relux.NavigationLink<TestPage, Label>
+
+        let link = TestNavigationLink(page: .details(id: 5)) {
+            Text("Open")
+        }
+
+        #expect(String(describing: type(of: link)).contains("NavigationLink"))
     }
 }
 

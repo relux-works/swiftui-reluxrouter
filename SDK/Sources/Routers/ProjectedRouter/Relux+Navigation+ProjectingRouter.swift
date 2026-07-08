@@ -83,10 +83,13 @@ extension Relux.Navigation {
         ///
         /// - Parameter action: The Relux action to be processed.
         public func reduce(with action: any Relux.Action) async {
-            switch action as? Relux.Navigation.ProjectingRouter<Page>.Action {
-            case .none: break
-            case let .some(action):
+            switch action {
+            case let action as Relux.Navigation.ProjectingRouter<Page>.Action:
                 internalReduce(with: action)
+            case let action as Relux.Navigation.ProjectingRouterAction:
+                internalReduce(with: action)
+            default:
+                break
             }
         }
     }
@@ -139,6 +142,20 @@ extension Relux.Navigation.ProjectingRouter {
                 let itemsCountToRemove = min(max(count, 0), path.count)
                 self.path.removeLast(itemsCountToRemove)
                 debugPrint(">>> router route path remove \(count)")
+        }
+    }
+
+    @MainActor
+    func internalReduce(with action: Relux.Navigation.ProjectingRouterAction) {
+        switch action {
+        case let .push(value, allowingDuplicates):
+            if allowingDuplicates == false,
+               projectedPath.contains(where: { $0.hasSameRouteIdentity(as: value.projection) }) {
+                return
+            }
+
+            value.append(to: &path)
+            debugPrint(">>> router route path push \(value)")
         }
     }
 }

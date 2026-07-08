@@ -33,6 +33,38 @@ extension Relux.Navigation {
             self.valueDescription = valueDescription
             self.isKnownPageType = isKnownPageType
         }
+
+        public func hasSameRouteIdentity(as other: Self) -> Bool {
+            typeName == other.typeName && valueDescription == other.valueDescription
+        }
+    }
+}
+
+@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
+extension Relux.Navigation {
+    public struct AnyPathValue: @unchecked Sendable, CustomStringConvertible {
+        public let projection: Relux.Navigation.PathProjection
+        private let appendToPath: @MainActor @Sendable (inout NavigationPath) -> Void
+
+        public var description: String {
+            projection.description
+        }
+
+        public init<Value>(_ value: Value) where Value: Hashable, Value: Sendable {
+            self.projection = NavigationPathProjector.projection(of: value, knownPageType: Never.self)
+            self.appendToPath = { path in
+                path.append(value)
+            }
+        }
+
+        @MainActor
+        func append(to path: inout NavigationPath) {
+            appendToPath(&path)
+        }
+    }
+
+    public enum ProjectingRouterAction: Relux.Action {
+        case push(AnyPathValue, allowingDuplicates: Bool = false)
     }
 }
 

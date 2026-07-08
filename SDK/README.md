@@ -19,6 +19,70 @@ public final class ProjectingRouter<Page>: Relux.Navigation.RouterProtocol, Obse
 
 `PathProjection` is a read-only inspection value. Do not register `navigationDestination(for: PathProjection.self)` or `navigationDestination(for: ProjectedPage.self)`; SwiftUI route handlers should stay attached to each module's concrete page type.
 
+### Module-Local Destinations
+
+Use one `ProjectingRouter` as the app-level `NavigationStack` harness, then let feature modules keep their own route types and destination handlers inside the view hierarchy. Module pages do not need a shared app enum or protocol.
+
+```swift
+enum AppPage: Relux.Navigation.PathComponent {
+    case about
+}
+
+typealias AppRouter = Relux.Navigation.ProjectingRouter<AppPage>
+
+NavigationStack(path: $router.path) {
+    CatalogModule.Container {
+        RootContainer()
+            .navigationDestination(for: AppPage.self) { page in
+                AppAboutPage(page: page)
+            }
+    }
+}
+
+enum CatalogModule {
+    enum Page: Hashable, Sendable {
+        case detail(id: String)
+    }
+
+    typealias NavigationLink<Label: View> = Relux.NavigationLink<Page, Label>
+
+    struct Container<Content: View>: View {
+        @ViewBuilder let content: () -> Content
+
+        var body: some View {
+            content()
+                .navigationDestination(for: Page.self, destination: Self.destination)
+        }
+
+        @ViewBuilder
+        static func destination(for page: Page) -> some View {
+            switch page {
+            case let .detail(id):
+                CatalogDetailPage(id: id)
+            }
+        }
+    }
+
+    struct LinksSection: View {
+        var body: some View {
+            Section("Catalog") {
+                NavigationLink(page: .detail(id: "item-42")) {
+                    Text("Open via Relux")
+                }
+
+                SwiftUI.NavigationLink(value: Page.detail(id: "native-42")) {
+                    Text("Open via native NavigationLink")
+                }
+            }
+        }
+    }
+}
+```
+
+`Relux.NavigationLink<Page, Label>` dispatches `Relux.Navigation.ProjectingRouterAction.push(...)`. The router appends the original concrete `Page` value to the live `NavigationPath`, so SwiftUI still resolves it through `navigationDestination(for: CatalogModule.Page.self)`. Native `NavigationLink(value:)` values and Relux-driven values therefore appear in the same computed projection.
+
+If reflected output is too noisy for a route value, conform that page to `Relux.Navigation.PathProjectionRepresentable` and return a compact string. Do not use `Codable` for projection: non-codable route payloads are supported.
+
 ### Relux Actions
 
 ```swift
