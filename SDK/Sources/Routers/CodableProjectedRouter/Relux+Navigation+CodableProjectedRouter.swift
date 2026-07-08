@@ -24,7 +24,7 @@ extension Relux.Navigation {
                     debugPrint("[Relux] [Navigation] [Router] [\(pageTypeName)] Internal change: \(previousPathCount) -> \(path.count)")
                     previousPathCount = path.count
                     if let key = userDefaultsKey {
-                        saveNavigationPathToUserDefaults(forKey: key)
+                        _ = saveNavigationPathToUserDefaults(forKey: key)
                     }
                 } else if previousPathCount != path.count {
                     let changeAmount = previousPathCount - path.count
@@ -32,7 +32,7 @@ extension Relux.Navigation {
                         "[Relux] [Navigation] [Router] [\(pageTypeName)] External change: \(changeAmount) items \(changeAmount > 0 ? "popped" : "pushed")")
                     previousPathCount = path.count
                     if let key = userDefaultsKey {
-                        saveNavigationPathToUserDefaults(forKey: key)
+                        _ = saveNavigationPathToUserDefaults(forKey: key)
                     }
                     onSystemNavigationChange?(changeAmount)
                 }

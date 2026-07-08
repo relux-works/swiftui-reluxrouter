@@ -28,13 +28,23 @@ Carthage/Build
 *.framework
 *.xcframework
 .gitrelease
- *.pbxproj
+*.pbxproj
 *.xcscheme
 *.entitlements
 *.xcodeproj/
 gitrelease
 
 DerivedData/
+DerivedData*/
 Derived/*
 !Derived/InfoPlists/
 !Derived/InfoPlists/*.plist
+SDK/Derived/
+
+# Agent-local workspace
+.task-board/
+task-board.config.json
+AGENTS.md
+
+# Separate local sample app repository
+Sample/

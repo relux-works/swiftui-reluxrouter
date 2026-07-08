@@ -1,4 +1,3 @@
-import Combine
 import Relux
 import SwiftUI
 
@@ -11,7 +10,7 @@ extension Relux.Navigation.ProjectingRouter {
 
 extension Relux.Navigation {
 
-    /// A router class that manages navigation state and synchronizes between a `NavigationPath` and a projected path.
+    /// A router class that manages navigation state and exposes a readable projection of a `NavigationPath`.
     ///
     /// `ProjectingRouter` is designed to handle complex navigation scenarios, including programmatic navigation updates for other modules.
     ///
@@ -22,30 +21,45 @@ extension Relux.Navigation {
     public final class ProjectingRouter<Page>: Relux.Navigation.RouterProtocol, ObservableObject
     where Page: PathComponent {
 
-        private var pipelines: Set<AnyCancellable> = []
-
         /// The current navigation path.
         ///
         /// This property represents the actual navigation stack and is compatible with SwiftUI's navigation APIs.
-        /// It is automatically updated when the projected path changes and vice versa.
         @Published public var path: NavigationPath
 
-        /// A projection of the current path, including both known and external pages.
+        /// A compatibility projection of the current path, including both known and external pages.
         ///
         /// This property provides a more detailed view of the navigation stack, including pages that may have been
-        /// added through external means (e.g., system back button). It is automatically synchronized with `path`.
-        @Published public private(set) var pathProjection: [ProjectedPage] = []
+        /// added through external means (e.g., system back button). It is derived from the actual `path` contents.
+        public var pathProjection: [ProjectedPage] {
+            NavigationPathProjector.values(in: path).map { value in
+                if let page = value as? Page {
+                    .known(page)
+                } else {
+                    .external
+                }
+            }
+        }
+
+        /// Readable projection of the actual `NavigationPath` contents.
+        ///
+        /// The projection is built from each path element's concrete dynamic type and mirrored payload. It does not
+        /// require `Codable` and does not replace the concrete page types used by SwiftUI destination handlers.
+        public var projectedPath: [Relux.Navigation.PathProjection] {
+            NavigationPathProjector.projections(
+                in: path,
+                knownPageType: Page.self
+            )
+        }
+
+        public var projectedPathStrings: [String] {
+            projectedPath.map(\.description)
+        }
 
         /// Initializes a new instance of `ProjectingRouter`.
         ///
-        /// This initializer sets up the necessary pipelines to keep `path` and `pathProjection` synchronized.
+        /// This initializer seeds the native path and immediately derives its projections.
         public init(pages: [Page] = []) {
-            self.path = .init()
-            if pages.isEmpty {
-                internalReduce(with: .set(pages))
-            }
-
-            initPipelines()
+            self.path = .init(pages)
             let pageTypeName = _typeName(Page.self, qualified: true)
             debugPrint("[Relux] [Navigation] [ProjectingRouter] ProjectingRouter   inited with page type: \(pageTypeName)")
         }
@@ -57,9 +71,8 @@ extension Relux.Navigation {
 
         /// Resets the router to its initial state.
         ///
-        /// This method clears both the `path` and `pathProjection`, effectively resetting the navigation stack.
+        /// This method clears the native path; projections are refreshed from the empty path.
         public func cleanup() async {
-            pathProjection = []
             path = .init()
         }
 
@@ -82,49 +95,6 @@ extension Relux.Navigation {
 @available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
 extension Relux.Navigation.ProjectingRouter {
 
-    @MainActor
-    private func initPipelines() {
-        setupPathToProjectionPipeline()
-    }
-
-    /// Sets up a Combine pipeline to synchronize the `path` with the `pathProjection`.
-    ///
-    /// This pipeline observes changes in the `path` and updates the `pathProjection` accordingly:
-    /// - If the path grows, it adds `.external` pages to the projection.
-    /// - If the path shrinks, it removes pages from the end of the projection.
-    ///
-    /// This ensures that the `pathProjection` always reflects the current state of the `path`,
-    /// even when external navigation occurs (e.g., when a user taps the back button).
-    private func setupPathToProjectionPipeline() {
-        $path
-            // .debounce(for: 0.1, scheduler: DispatchQueue.main)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] path in
-                guard let self else { return }
-                let pagesDiff = path.count - self.pathProjection.count
-
-                switch pagesDiff {
-                case 0:
-                    // No change in path length, no action needed
-                    break
-
-                case ..<0:
-                    // Path has shrunk, remove pages from the end of the projection
-                    self.pathProjection.removeLast(abs(pagesDiff))
-
-                default:
-                    // Path has grown, add external pages to the projection
-                    let newExternalPages = [ProjectedPage](repeating: .external, count: pagesDiff)
-                    self.pathProjection.append(contentsOf: newExternalPages)
-                }
-            }
-            .store(in: &pipelines)
-    }
-}
-
-@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
-extension Relux.Navigation.ProjectingRouter {
-
     /// Internal method to handle navigation actions and update the router's state accordingly.
     /// This method is responsible for maintaining consistency between `pathProjection` and `path`.
     ///
@@ -137,18 +107,13 @@ extension Relux.Navigation.ProjectingRouter {
                 // Handle pushing a new page onto the navigation stack
                 switch allowingDuplicates {
                     case true:
-                        // If duplicates are allowed, simply append the new page to the projection
-                        self.pathProjection.append(.known(page))
                         self.path.append(page)
                         debugPrint(">>> router route path push \(page)")
 
                     case false:
-                        // If duplicates are not allowed, check if the page already exists in the projection
-                        // And act accordingly
-                        if self.pathProjection.contains(.known(page)) {
+                        if self.contains(page) {
                             return
                         }
-                        self.pathProjection.append(.known(page))
                         self.path.append(page)
                         debugPrint(">>> router route path push \(page)")
                     }
@@ -157,24 +122,48 @@ extension Relux.Navigation.ProjectingRouter {
                 // Handle setting an entirely new navigation stack
                 // Convert the new pages to known projected pages
 
-                let newPathProjection: [ProjectedPage] = pages.map { .known($0) }
-                guard self.pathProjection != newPathProjection else {
+                let newPathProjection = pages.map {
+                    Self.projectedPathComponent(for: $0)
+                }
+                guard self.projectedPath != newPathProjection else {
                     return
                 }
 
                 // Set the actual navigation path to the new pages
-                self.pathProjection = pages.map { .known($0) }
                 self.path = .init(pages)
                 debugPrint(">>> router route path set \(pages)")
 
             case let .removeLast(count):
                 // Handle removing pages from the end of the navigation stack
                 // Calculate the actual number of items to remove, ensuring we don't remove more than exist
-                let itemsCountToRemove = min(count, pathProjection.count)
-                // Remove the calculated number of items from the projection
-                self.pathProjection.removeLast(itemsCountToRemove)
+                let itemsCountToRemove = min(max(count, 0), path.count)
                 self.path.removeLast(itemsCountToRemove)
                 debugPrint(">>> router route path remove \(count)")
         }
     }
+}
+
+@available(iOS 16, macOS 13, watchOS 9, tvOS 16, macCatalyst 16, *)
+extension Relux.Navigation.ProjectingRouter {
+    public static func projectedPathComponent<Value>(
+        for value: Value
+    ) -> Relux.Navigation.PathProjection {
+        NavigationPathProjector.projection(of: value, knownPageType: Page.self)
+    }
+
+    public static func projectedPathString<Value>(
+        for value: Value
+    ) -> String {
+        projectedPathComponent(for: value).description
+    }
+
+    public func contains(_ page: Page) -> Bool {
+        containsProjection(of: page)
+    }
+
+    public func containsProjection<Value>(of value: Value) -> Bool {
+        let projection = Self.projectedPathComponent(for: value)
+        return projectedPath.contains(projection)
+    }
+
 }

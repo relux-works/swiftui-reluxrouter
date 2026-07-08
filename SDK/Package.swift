@@ -25,7 +25,7 @@ let package = Package(
 			dependencies:  [
 				.product(name: "Relux", package: "swift-relux"),
 			],
-			path: "SDK/Sources"
+			path: "Sources"
 		),
 		.testTarget(
 			name: "ReluxRouterTests",
@@ -33,7 +33,7 @@ let package = Package(
 				"ReluxRouter",
 				.product(name: "Relux", package: "swift-relux"),
 			],
-			path: "SDK/Tests"
+			path: "Tests"
 		),
 	]
 )

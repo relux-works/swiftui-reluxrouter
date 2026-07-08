@@ -1,25 +1,10 @@
 # Relux SwiftUI Router
 
-ReluxRouter provides SwiftUI navigation routers for
-[Relux](https://github.com/relux-works/swift-relux). The package exposes both a
-generic `Router` and a `ProjectingRouter` that can inspect the actual
-`NavigationPath` content without requiring every path value to be `Codable`.
-
-This repository is organized as a small workspace:
-
-- `Package.swift` - SwiftPM compatibility manifest for package consumers. Its
-  targets point into `SDK/Sources` and `SDK/Tests`.
-- `SDK/` - the SDK package contents and package-local README.
-- `Sample/` - local demo iOS app repository used for UI/XCUITest validation.
-
-`Sample/` is intentionally ignored by this repository because it has its own git
-remote and history.
+This documentation covers two navigation router implementations: `ProjectingRouter` and `Router`. Both are part of the `Relux.Navigation` namespace and conform to the `RouterProtocol` for use with [Relux](https://github.com/relux-works/swift-relux), a unidirectional data flow architectural library designed to work seamlessly with Swift 6's concurrency model and tailored for use within SwiftUI applications.
 
 ## ProjectingRouter
 
-`ProjectingRouter` is a navigation router that maintains a SwiftUI
-`NavigationPath` and exposes a projected view of that path for inspection.
-Available from iOS 16, macOS 13, watchOS 9, and tvOS 16.
+`ProjectingRouter` is a navigation router that maintains both a navigation path for use within SwiftUI navigation stack, and a projected path – a version of the path useful for inspection. Available from iOS 16, macOS 13, watchOS 9, tvOS 16.
 
 ### Declaration
 
@@ -30,16 +15,9 @@ public final class ProjectingRouter<Page>: Relux.Navigation.RouterProtocol, Obse
 
 ### Path Projection
 
-`ProjectingRouter` exposes computed `projectedPath` and `projectedPathStrings`,
-derived from the actual `NavigationPath` contents on demand. The projection reads
-concrete path elements without requiring `Codable`, so it can inspect both
-Relux-driven pages and externally inserted SwiftUI navigation values while
-keeping `path` as the only source of truth.
+`ProjectingRouter` exposes computed `projectedPath` and `projectedPathStrings`, derived from the actual `NavigationPath` contents on demand. The projection reads concrete path elements without requiring `Codable`, so it can inspect both Relux-driven pages and externally inserted SwiftUI navigation values while keeping `path` as the only source of truth.
 
-`PathProjection` is a read-only inspection value. Do not register
-`navigationDestination(for: PathProjection.self)` or
-`navigationDestination(for: ProjectedPage.self)`. SwiftUI route handlers should
-stay attached to each module's concrete page type.
+`PathProjection` is a read-only inspection value. Do not register `navigationDestination(for: PathProjection.self)` or `navigationDestination(for: ProjectedPage.self)`; SwiftUI route handlers should stay attached to each module's concrete page type.
 
 ### Relux Actions
 
@@ -53,8 +31,7 @@ public enum Action: Relux.Action {
 
 ## Router
 
-`Router` is a simpler navigation router available from iOS 17, macOS 14,
-watchOS 10, tvOS 17, and macCatalyst 17.
+`Router` is a simpler navigation router available from iOS 17, macOS 14, watchOS 10, tvOS 17, and macCatalyst 17.
 
 ### Declaration
 
@@ -75,21 +52,13 @@ public enum Action: Relux.Action {
 
 ## Usage
 
-The routers can be used in conjunction with SwiftUI's `NavigationStack` or
-`NavigationSplitView` to create dynamic navigation experiences.
+The routers can be used in conjunction with SwiftUI's `NavigationStack` or `NavigationSplitView` to create dynamic navigation experiences.
 
-Both routers can manage navigation in SwiftUI applications. `ProjectingRouter`
-adds inspection and duplicate-prevention helpers for mixed Relux/native
-navigation stacks. Use it with SwiftUI reference semantics through
-`@EnvironmentObject`. `Router` offers a simpler API for basic navigation needs
-inside unified SwiftUI environment injection through `@Environment`.
+Both routers can be used to manage navigation in SwiftUI applications. The `ProjectingRouter` provides additional functionality for handling external pages and preventing duplicates – use it with SwiftUI reference semantics environment `@EnvironmentObject`. The `Router` offers a simpler API for basic navigation needs within unified SwiftUI environment `@Environment`.
 
 ### Initialization and Connection to Relux
 
-To use either router, connect the instances to the Relux state machine during
-container initialization, then attach them to views through the corresponding
-environment-access modifier. On initialization, resolve the generic page with a
-concrete type specific to your app.
+To use either router, connect the instances to Relux state machine on container initialization, attach to views through corresponding environment-access modifier. On initialization, resolve generic page with concrete type specific for your app.
 
 ```swift
 @main @MainActor
@@ -114,8 +83,9 @@ Define your navigation pages:
 ```swift
 import Relux
 
+// namespace
 extension UI.Dashboard { enum Navigation {} }
-extension UI.Profile { enum Navigation {} }
+extension UI.Profile { enum Navigation { } }
 
 extension UI.Dashboard.Navigation {
     enum Page: Relux.Navigation.PathComponent {
@@ -149,9 +119,9 @@ extension Anteater {
 }
 ```
 
-### Controlling Navigation
+### Controlling navigation
 
-Dispatch navigation actions as regular Relux actions:
+To control the navigation programmatically, dispatch the navigation action as usual Relux action:
 
 ```swift
 Button(action: {
@@ -164,6 +134,10 @@ Button(action: {
     Text("Info Page")
 }
 ```
+
+## License
+
+ReluxRouter is released under the [MIT License](https://github.com/relux-works/swift-relux/blob/main/LICENSE).
 
 ## The Relux Stack
 
@@ -195,22 +169,10 @@ work is open source.
 ## Development Tools
 
 - Swift Package Manager: builds and tests the SDK.
-  - Build from repo root: `swift build`
-  - Test from repo root: `swift test`
-  - Package-local build: `cd SDK && swift build`
-  - Package-local test: `cd SDK && swift test`
-  - Artifacts: `.build/` or `SDK/.build/`
-- ios-app-manager: scaffolds and maintains the sample iOS app.
-  - Config: `Sample/ios-app-manager.json`
-  - Setup: `cd Sample && make setup`
-  - Build: `cd Sample && make build`
-  - UI test: `cd Sample && make test`
-  - Xcode/DerivedData artifacts: `Sample/Derived/`, `Sample/DerivedData/`
-- task-board: local agent workflow board for this checkout.
+  - Build: `swift build`
+  - Test: `swift test`
+  - Artifacts: `.build/`
+- task-board: optional local agent workflow board for this checkout.
   - Config: `task-board.config.json`
   - Board data: `.task-board/`
   - Both are local-only and ignored by git in this repository.
-
-## License
-
-ReluxRouter is released under the [MIT License](https://github.com/relux-works/swift-relux/blob/main/LICENSE).
